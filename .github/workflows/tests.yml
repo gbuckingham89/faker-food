@@ -1,0 +1,50 @@
+name: Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  tests:
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ ubuntu-latest ]
+        php: [ 8.0, 8.1 ]
+
+    name: Tests - PHP ${{ matrix.php }} - ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Cache dependencies
+        uses: actions/cache@v1
+        with:
+          path: ~/.composer/cache/files
+          key: dependencies-composer-${{ hashFiles('composer.json') }}
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: curl, libxml, mbstring, zip, pcntl, bcmath, intl. fileinfo
+
+      - name: Install global Composer dependencies
+        run: composer global require "squizlabs/php_codesniffer=*"
+
+      - name: Install local Composer dependencies
+        run: composer install --no-ansi --no-interaction --no-scripts --no-suggest --no-progress --prefer-dist
+
+      - name: Execute test suite
+        run: php ./vendor/bin/phpunit
+
+      - name: Execute PHP_CodeSniffer
+        run: phpcs -p
+
+      - name: Execute Larastan
+        run: ./vendor/bin/phpstan analyse
